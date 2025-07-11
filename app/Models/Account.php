@@ -72,7 +72,7 @@ class Account extends Model
      *
      * This defines the inverse of a one-to-many relationship (Many-to-One).
      */
-    public function bank(): BelongsTo
+    public function bank(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Bank::class, 'institution_code', 'institution_code');
     }
