@@ -19,9 +19,10 @@ class LatestTransactions extends BaseWidget
                     ->orderBy('booking_date_time', 'desc')
             )
             ->columns([
+                Tables\Columns\TextColumn::make('account.institution_code')
+                    ->label('Institution Code'),
                 Tables\Columns\TextColumn::make('account_identification')
                     ->label('Account Number'),
-
                 Tables\Columns\TextColumn::make('transaction_information')
                     ->label('Description'),
 

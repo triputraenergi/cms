@@ -2,11 +2,12 @@
 
 namespace App\Filament\Resources\AccountResource\Widgets;
 
-use App\Models\Balance;
+use App\Models\Account;
 use App\Models\Transaction;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\On;
 
 class AccountStats extends BaseWidget
 {
@@ -21,45 +22,16 @@ class AccountStats extends BaseWidget
      * - 'start_date'
      * - 'end_date'
      */
-    protected ?array $filters = [];
+    public ?array $filters = [];
 
-    protected function getStats(): array
+    protected function getCards(): array
     {
         // Get filter values, providing null as a default
         $accountNumber = $this->filters['account_number'] ?? null;
         $startDate = $this->filters['start_date'] ?? null;
         $endDate = $this->filters['end_date'] ?? null;
 
-        // --- Balance Calculations (ITAV type) ---
-
-        // Subquery to find the latest date for each account, respecting filters
-        $latestBalanceDatesSubquery = Balance::select('account_identification', DB::raw('MAX(date_time) as latest_date'))
-            ->where('balance_type', 'ITAV');
-
-        // If an account number is specified, filter for that account.
-        if ($accountNumber) {
-            $latestBalanceDatesSubquery->where('account_identification', $accountNumber);
-        }
-
-        // If an end date is specified, find the latest balance *as of* that date.
-        // The start date is not relevant for finding the single latest balance.
-        if ($endDate) {
-            $latestBalanceDatesSubquery->where('date_time', '<=', $endDate);
-        }
-
-        $latestBalanceDatesSubquery->groupBy('account_identification');
-
-        // Base query to join 'ITAV' balances with their latest dates
-        $baseQuery = DB::table('balances')
-            ->joinSub($latestBalanceDatesSubquery, 'latest_bal', function ($join) {
-                $join->on('balances.account_identification', '=', 'latest_bal.account_identification')
-                    ->on('balances.date_time', '=', 'latest_bal.latest_date');
-            })
-            ->where('balance_type', 'ITAV');
-
-        // Perform aggregations on the filtered balance data
-        $totalBalance = (clone $baseQuery)->sum('balances.amount');
-        $totalCreditLine = (clone $baseQuery)->sum('balances.credit_line_amount');
+        $accounts = Account::all();
 
         // --- Transaction Calculations (Debit & Credit) ---
 
@@ -69,14 +41,16 @@ class AccountStats extends BaseWidget
         // Apply account number filter if provided
         if ($accountNumber) {
             $transactionQuery->where('account_identification', $accountNumber);
+            $accountIdentification = Account::find($accountNumber)->account_identification;
+            $accounts = $accounts->where('account_identification', $accountIdentification);
         }
 
         // Apply date range filters if provided. Assumes a 'created_at' column.
         if ($startDate) {
-            $transactionQuery->whereDate('created_at', '>=', $startDate);
+            $transactionQuery->whereDate('value_date_time', '>=', $startDate);
         }
         if ($endDate) {
-            $transactionQuery->whereDate('created_at', '<=', $endDate);
+            $transactionQuery->whereDate('value_date_time', '<=', $endDate);
         }
 
         // Calculate total credit and debit from the filtered transaction query
@@ -91,14 +65,13 @@ class AccountStats extends BaseWidget
             $transactionDesc .= ' (filtered)';
         }
 
+        $totalBalance = $accounts->sum('balance.amount');
+
 
         return [
             Stat::make('Total Balance', number_format($totalBalance, 2))
                 ->description($balanceDesc)
                 ->color('success'),
-            Stat::make('Total Credit Line', number_format($totalCreditLine, 2))
-                ->description('Sum of available credit lines' . ($accountNumber ? ' (filtered)' : ''))
-                ->color('warning'),
             Stat::make('Total Credit Transactions', number_format($totalCredit, 2))
                 ->description($transactionDesc)
                 ->color('blue'),
@@ -106,5 +79,11 @@ class AccountStats extends BaseWidget
                 ->description($transactionDesc)
                 ->color('danger'),
         ];
+    }
+
+    #[On('updateWidgetData')]
+    public function updateData($data)
+    {
+        $this->filters = $data;
     }
 }

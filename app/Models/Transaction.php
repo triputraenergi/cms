@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Class Transaction
@@ -101,8 +102,8 @@ class Transaction extends Model
      * Get the account that owns the transaction.
      * This is the equivalent of the @ManyToOne relationship.
      */
-    // public function account(): BelongsTo
-    // {
-    //     return $this->belongsTo(Account::class, 'account_number', 'account_number');
-    // }
+     public function account(): BelongsTo
+     {
+         return $this->belongsTo(Account::class, 'account_identification', 'account_number');
+     }
 }

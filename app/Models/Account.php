@@ -99,4 +99,20 @@ class Account extends Model
          // Adjust the foreign key as needed.
          return $this->hasMany(Transaction::class, 'account_identification', 'account_number');
      }
+
+     public function balance()
+     {
+         return $this->hasOne(Balance::class, 'account_identification', 'account_identification')->latest();
+     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accessors
+    |--------------------------------------------------------------------------
+    */
+
+    public function getAccountIdentificationAttribute(): string
+    {
+        return $this->attributes['account_country'] . $this->attributes['institution_code'] . $this->attributes['account_type'] . $this->account_number;
+    }
 }
