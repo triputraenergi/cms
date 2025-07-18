@@ -19,3 +19,8 @@ Route::post('/signs', [\App\Http\Controllers\PgpEncryptController::class, 'handl
 Route::get('/php-user', function () {
     return get_current_user(); // or: exec('whoami');
 });
+
+// This route is only accessible by services with a valid Sanctum token.
+Route::middleware('auth:sanctum')->prefix('internal')->group(function () {
+    Route::post('/validate-user', [\App\Http\Controllers\Internal\AuthController::class, 'validateUser']);
+});

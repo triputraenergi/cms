@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Filament\Resources\UserResource\RelationManagers;
+use App\Models\Company;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -23,9 +24,19 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name'),
-                Forms\Components\TextInput::make('email')->email(),
-                Forms\Components\TextInput::make('password')->hiddenOn('edit'),
+                Forms\Components\TextInput::make('name')
+                    ->required(),
+                Forms\Components\TextInput::make('email')->email()
+                    ->required(),
+                Forms\Components\Select::make("company_code")
+                    ->required()
+                    ->label('Company')
+                    ->options(Company::all()->pluck('name', 'code')),
+                Forms\Components\TextInput::make('password')
+//                    ->hiddenOn('edit')
+                    ->password()
+                    ->revealable()
+                    ->required(),
                 Forms\Components\Select::make('roles')
                     ->relationship('roles', 'name')
                     ->preload(),
@@ -40,6 +51,9 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('email')
                     ->sortable()
                     ->copyable(),
+                Tables\Columns\TextColumn::make('company.name')
+                    ->label("Company")
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('roles.name')
                     ->badge()
                     ->sortable()

@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\AccountResource\Pages;
 use App\Filament\Resources\AccountResource\RelationManagers;
 use App\Models\Account;
+use App\Models\Company;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -31,6 +32,10 @@ class AccountResource extends Resource
                     ->maxLength(5),
                 Forms\Components\TextInput::make('bic')
                     ->maxLength(15),
+                Forms\Components\Select::make('company_code')
+                    ->label("Company")
+                    ->required()
+                    ->options(Company::all()->pluck('name', 'code')),
                 Forms\Components\TextInput::make('institution_code')
                     ->required()
                     ->maxLength(10),
@@ -47,7 +52,8 @@ class AccountResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('account_type')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('bic')
+                Tables\Columns\TextColumn::make('company.name')
+                    ->label("Company")
                     ->searchable(),
                 Tables\Columns\TextColumn::make('institution_code')
                     ->searchable(),

@@ -3,17 +3,21 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Resources\AccountResource\Widgets\AccountStats;
+use App\Filament\Resources\BalanceResource\Widgets\BalanceChart;
 use App\Filament\Resources\TransactionResource\Widgets\LatestTransactions;
 use App\Models\Account;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
 
 class Dashboard extends Page implements HasForms
 {
@@ -36,12 +40,14 @@ class Dashboard extends Page implements HasForms
         'credit_debit_indicator' => null,
     ];
 
+    public ?string $lastRefreshed = null;
     public function mount(): void
     {
         // Set initial dynamic dates. The form will automatically pick these up
         // because its state is bound to the $filters property.
         $this->filters['start_date'] = $this->filters['start_date'] ?? now()->startOfMonth()->toDateString();
         $this->filters['end_date'] = $this->filters['end_date'] ?? now()->endOfMonth()->toDateString();
+        $this->lastRefreshed = now()->tz('Asia/Jakarta')->format('g:i:s A');
     }
 
     /**
@@ -61,7 +67,8 @@ class Dashboard extends Page implements HasForms
                         ->reactive()
                         ->afterStateUpdated(function ($state) {
                             $this->dispatch('updateWidgetData', data: $this->filters);
-                        }),
+                            $this->dispatch('refresh');
+                        })->live(debounce: 500),
 
                     Select::make('period')
                         ->label('Period')
@@ -121,17 +128,6 @@ class Dashboard extends Page implements HasForms
                         ->afterStateUpdated(function ($state) {
                             $this->dispatch('updateWidgetData', data: $this->filters);
                         }),
-                    Select::make('credit_debit_indicator')
-                        ->label('Type')
-                        ->options([
-                            'Credit' => 'Credit',
-                            'Debit' => 'Debit'
-                        ])
-                        ->placeholder('Credit/Debit')
-                        ->reactive()
-                        ->afterStateUpdated(function ($state) {
-                            $this->dispatch('updateWidgetData', data: $this->filters);
-                        }),
                 ]),
             ])
             /**
@@ -141,16 +137,6 @@ class Dashboard extends Page implements HasForms
             ->statePath('filters');
     }
 
-    /**
-     * This is the CORRECT, REACTIVE way to pass data.
-     * It's called automatically when the form state (bound to $this->filters) changes.
-     */
-    public function getWidgetData(): array
-    {
-        return [
-            'filters' => $this->filters,
-        ];
-    }
 
     /**
      * This is the CORRECT way to define which widgets appear on the page.
@@ -176,5 +162,44 @@ class Dashboard extends Page implements HasForms
     public function getSubheading(): string | Htmlable | null
     {
         return 'An overview of your bank accounts and transactions.';
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('refresh')
+                ->label('Refresh')
+                ->color('gray')
+                ->icon('heroicon-o-arrow-path')
+                ->tooltip('Last refreshed at ' . $this->lastRefreshed)
+                ->action(function (\Filament\Actions\Action $action) {
+                    // 1. Before the logic runs, change the icon to the spinning version
+                    $action->icon('heroicon-o-arrow-path-solid animate-spin');
+
+                    // This makes the button temporarily unavailable to prevent double-clicking
+                    $action->disabled();
+
+                    // make post request to http://localhost:8080/api/refresh
+                    $response = Http::post('http://localhost:8080/api/hsbc/refresh');
+
+                    // Optional: Check if the request was successful and handle errors
+                    if ($response->failed()) {
+                        // Handle error, maybe show a notification
+                         Notification::make()->title('Refresh failed!')->danger()->send();
+                    } else {
+                        Notification::make()->title('Refreshed successfully!')->success()->send();
+                    }
+                    // 2. Your core logic to refresh the data
+                    $this->lastRefreshed = now()->tz('Asia/Jakarta')->format('g:i:s A');
+
+                    // 3. After the logic is done, change the icon back to the original
+                    $action->icon('heroicon-o-arrow-path');
+
+                    // Re-enable the button
+                    $action->disabled(false);
+                    $this->dispatch('updateWidgetData', data: $this->filters);
+                })
+        ];
+
     }
 }

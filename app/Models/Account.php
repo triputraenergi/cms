@@ -59,6 +59,7 @@ class Account extends Model
         'account_type',
         'bic',
         'institution_code', // The foreign key for the Bank relationship
+        'company_code'
     ];
 
     /*
@@ -103,6 +104,16 @@ class Account extends Model
      public function balance()
      {
          return $this->hasOne(Balance::class, 'account_identification', 'account_identification')->latest();
+     }
+
+     public function balances()
+     {
+         return $this->hasMany(Balance::class, 'account_identification', 'account_identification');
+     }
+
+     public function company()
+     {
+        return $this->belongsTo(Company::class, 'company_code', 'code');
      }
 
     /*

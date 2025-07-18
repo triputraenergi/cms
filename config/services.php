@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'middleware' => [
+        'url' => env('MIDDLEWARE_API_URL'),
+    ],
+
 ];
