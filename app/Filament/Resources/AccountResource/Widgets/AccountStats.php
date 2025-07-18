@@ -25,44 +25,112 @@ class AccountStats extends BaseWidget
      */
     public ?array $filters = [];
 
+//    protected function getCards(): array
+//    {
+//        $user = Auth::user();
+//        // Get filter values, providing null as a default
+//        $accountNumber = $this->filters['account_number'] ?? null;
+//        $startDate = $this->filters['start_date'] ?? null;
+//        $endDate = $this->filters['end_date'] ?? null;
+//
+//        $accounts = Account::where('company_code', $user['company_code'])->get();
+//
+//        // Start a new query for transactions
+//        $transactionQuery = Transaction::query()->whereHas('account.company', fn ($query) =>
+//            $query->where('code', $user['company_code'])
+//        );
+//
+//        $accountsWithBalance = Account::where('company_code', $user['company_code'])->with(['balances' => function ($query) use ($startDate) {
+//            // Use when() to apply conditional logic
+//            $query->when($startDate,
+//                // This function runs if $startDate IS NOT null or empty
+//                function ($query) use ($startDate) {
+//                    $query->whereDate('date_time', $startDate)->latest('date_time');
+//                },
+//                // This function runs if $startDate IS null or empty
+//                function ($query) {
+//                    $query->oldest('date_time');
+//                }
+//            )->limit(1); // limit(1) applies to both cases
+//        }])->get();
+//
+//        // Apply account number filter if provided
+//        if ($accountNumber) {
+//            $transactionQuery->where('account_identification', $accountNumber);
+//            $accountIdentification = Account::find($accountNumber)->account_identification;
+//            $accounts = $accounts->where('account_identification', $accountIdentification);
+//            $accountsWithBalance = $accountsWithBalance->where('account_identification', $accountIdentification);
+//        }
+//
+//        // Apply date range filters if provided. Assumes a 'created_at' column.
+//        if ($startDate) {
+//            $transactionQuery->whereDate('value_date_time', '>=', $startDate);
+//        }
+//        if ($endDate) {
+//            $transactionQuery->whereDate('value_date_time', '<=', $endDate);
+//        }
+//
+//        // Calculate total credit and debit from the filtered transaction query
+//        $totalCredit = (clone $transactionQuery)->where('credit_debit_indicator', 'C')->sum('transaction_amount');
+//        $totalDebit = abs((clone $transactionQuery)->where('credit_debit_indicator', 'D')->sum('transaction_amount'));
+//
+//        // Dynamically update descriptions based on active filters
+//        $openingBalanceDesc = 'Sum of opening balances';
+//        $closingBalanceDesc = 'Sum of closing balances';
+//        $creditDesc = 'Sum of all credit transactions';
+//        $debitDesc = 'Sum of all debit transactions';
+//        if ($accountNumber || $startDate || $endDate) {
+//            $openingBalanceDesc .= ' (filtered)';
+//            $closingBalanceDesc .= ' (filtered)';
+//            $creditDesc .= ' (filtered)';
+//            $debitDesc .= ' (filtered)';
+//        }
+//
+//
+//
+//        // 2. Calculate the sum using a closure for safety
+//        $openingBalance = $accountsWithBalance->sum(function ($account) {
+//            return $account->balances->first()?->amount ?? 0;
+//        });
+//        $closingBalance = $accounts->sum('balance.amount');
+//
+//
+//        return [
+//            Stat::make('Beginning Balance', number_format($openingBalance, 2))
+//                ->description($openingBalanceDesc),
+//            Stat::make('Total Debit Transactions', number_format($totalDebit, 2))
+//                ->description($debitDesc)
+//                ->color('danger'),
+//            Stat::make('Total Credit Transactions', number_format($totalCredit, 2))
+//                ->description($creditDesc)
+//                ->color('success'),
+//            Stat::make('Closing Balance', number_format($closingBalance, 2))
+//                ->description($closingBalanceDesc),
+//        ];
+//    }
     protected function getCards(): array
     {
         $user = Auth::user();
-        // Get filter values, providing null as a default
+
+        // --- 1. Get filter values ---
         $accountNumber = $this->filters['account_number'] ?? null;
         $startDate = $this->filters['start_date'] ?? null;
         $endDate = $this->filters['end_date'] ?? null;
 
-        $accounts = Account::where('company_code', $user['company_code'])->get();
+        // --- 2. Build the base queries and apply filters ---
 
-        // Start a new query for transactions
-        $transactionQuery = Transaction::query()->whereHas('account.company', fn ($query) =>
-            $query->where('code', $user['company_code'])
+        $accountQuery = Account::query()->where('company_code', $user['company_code']);
+        $transactionQuery = Transaction::query()->whereHas('account.company', fn ($q) =>
+        $q->where('code', $user['company_code'])
         );
 
-        $accountsWithBalance = Account::where('company_code', $user['company_code'])->with(['balances' => function ($query) use ($startDate) {
-            // Use when() to apply conditional logic
-            $query->when($startDate,
-                // This function runs if $startDate IS NOT null or empty
-                function ($query) use ($startDate) {
-                    $query->whereDate('date_time', $startDate)->latest('date_time');
-                },
-                // This function runs if $startDate IS null or empty
-                function ($query) {
-                    $query->oldest('date_time');
-                }
-            )->limit(1); // limit(1) applies to both cases
-        }])->get();
-
-        // Apply account number filter if provided
         if ($accountNumber) {
-            $transactionQuery->where('account_identification', $accountNumber);
-            $accountIdentification = Account::find($accountNumber)->account_identification;
-            $accounts = $accounts->where('account_identification', $accountIdentification);
-            $accountsWithBalance = $accountsWithBalance->where('account_identification', $accountIdentification);
+            $account = Account::find($accountNumber);
+            if ($account) {
+                $transactionQuery->where('account_identification', $account->account_identification);
+            }
         }
 
-        // Apply date range filters if provided. Assumes a 'created_at' column.
         if ($startDate) {
             $transactionQuery->whereDate('value_date_time', '>=', $startDate);
         }
@@ -70,45 +138,47 @@ class AccountStats extends BaseWidget
             $transactionQuery->whereDate('value_date_time', '<=', $endDate);
         }
 
-        // Calculate total credit and debit from the filtered transaction query
-        $totalCredit = (clone $transactionQuery)->where('credit_debit_indicator', 'C')->sum('transaction_amount');
-        $totalDebit = abs((clone $transactionQuery)->where('credit_debit_indicator', 'D')->sum('transaction_amount'));
+        // --- 3. Execute queries and calculate totals ---
 
-        // Dynamically update descriptions based on active filters
-        $openingBalanceDesc = 'Sum of opening balances';
-        $closingBalanceDesc = 'Sum of closing balances';
-        $creditDesc = 'Sum of all credit transactions';
-        $debitDesc = 'Sum of all debit transactions';
-        if ($accountNumber || $startDate || $endDate) {
-            $openingBalanceDesc .= ' (filtered)';
-            $closingBalanceDesc .= ' (filtered)';
-            $creditDesc .= ' (filtered)';
-            $debitDesc .= ' (filtered)';
+        // **FIXED**: If no start date is provided, use today's date for the opening balance.
+        // This provides a sensible default view for the 'Beginning Balance' card.
+        $openingBalanceDate = $startDate ?? now();
+
+        Log::info("Opening Balance Date : " . $openingBalanceDate);
+
+        // Get accounts with their opening balance based on the determined date.
+        $accountsWithOpeningBalance = (clone $accountQuery)
+            ->with(['balances' => function ($query) use ($openingBalanceDate) {
+                $endOfDay = \Carbon\Carbon::parse($openingBalanceDate)->endOfDay();
+                $query->where('date_time', '<=', $endOfDay)
+                    ->orderByDesc('date_time');
+            }])->get();
+
+        foreach ($accountsWithOpeningBalance as $account) {
+            $account->opening_balance = $account->balances->first(); // fallback to the latest available one
         }
 
+        $openingBalance = $accountsWithOpeningBalance->sum(fn ($acc) => $acc->balances->first()?->amount ?? 0);
+        $totalCredit = (clone $transactionQuery)->where('credit_debit_indicator', 'C')->sum('transaction_amount');
+        $totalDebit = abs((clone $transactionQuery)->where('credit_debit_indicator', 'D')->sum('transaction_amount'));
+        $closingBalance = $openingBalance + $totalCredit - $totalDebit;
 
-
-        // 2. Calculate the sum using a closure for safety
-        $openingBalance = $accountsWithBalance->sum(function ($account) {
-            return $account->balances->first()?->amount ?? 0;
-        });
-        $closingBalance = $accounts->sum('balance.amount');
-
+        // --- 4. Prepare descriptions and return Stat cards ---
+        $descSuffix = ($accountNumber || $startDate || $endDate) ? ' (filtered)' : '';
 
         return [
             Stat::make('Beginning Balance', number_format($openingBalance, 2))
-                ->description($openingBalanceDesc),
+                ->description('Sum of opening balances' . $descSuffix),
             Stat::make('Total Debit Transactions', number_format($totalDebit, 2))
-                ->description($debitDesc)
+                ->description('Sum of all debit transactions' . $descSuffix)
                 ->color('danger'),
             Stat::make('Total Credit Transactions', number_format($totalCredit, 2))
-                ->description($creditDesc)
+                ->description('Sum of all credit transactions' . $descSuffix)
                 ->color('success'),
             Stat::make('Closing Balance', number_format($closingBalance, 2))
-                ->description($closingBalanceDesc),
+                ->description('Calculated closing balance' . $descSuffix),
         ];
     }
-
     #[On('updateWidgetData')]
     public function updateData($data)
     {

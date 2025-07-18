@@ -33,7 +33,7 @@ class UserResource extends Resource
                     ->label('Company')
                     ->options(Company::all()->pluck('name', 'code')),
                 Forms\Components\TextInput::make('password')
-//                    ->hiddenOn('edit')
+                    ->hiddenOn('edit')
                     ->password()
                     ->revealable()
                     ->required(),

@@ -17,6 +17,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 
 class Dashboard extends Page implements HasForms
@@ -61,7 +62,7 @@ class Dashboard extends Page implements HasForms
                     // NOTE: The 'filters.' prefix is REMOVED from all component names.
                     Select::make('account_number')
                         ->label('Account')
-                        ->options(Account::query()->pluck('account_number', 'account_number'))
+                        ->options(Account::query()->where('company_code', Auth::user()['company_code'])->pluck('account_number', 'account_number'))
                         ->searchable()
                         ->placeholder('All Accounts')
                         ->reactive()
