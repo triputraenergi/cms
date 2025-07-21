@@ -4,6 +4,7 @@ namespace App\Filament\Resources\AccountResource\Widgets;
 
 use App\Models\Account;
 use App\Models\Transaction;
+use Carbon\Carbon;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Auth;
@@ -146,22 +147,59 @@ class AccountStats extends BaseWidget
 
         Log::info("Opening Balance Date : " . $openingBalanceDate);
 
-        // Get accounts with their opening balance based on the determined date.
+//        // Get accounts with their opening balance based on the determined date.
+//        $accountsWithOpeningBalance = (clone $accountQuery)
+//            ->with(['balances' => function ($query) use ($openingBalanceDate) {
+//                $endOfDay = \Carbon\Carbon::parse($openingBalanceDate)->endOfDay();
+//                $query->where('date_time', '<=', $endOfDay)
+//                    ->orderByDesc('date_time');
+//            }])->get();
+//
+//        foreach ($accountsWithOpeningBalance as $account) {
+//            $account->opening_balance = $account->balances->first(); // fallback to the latest available one
+//        }
+//
+//        $openingBalance = $accountsWithOpeningBalance->sum(fn ($acc) => $acc->balances->first()?->amount ?? 0);
+        // Get accounts with their opening balance.
         $accountsWithOpeningBalance = (clone $accountQuery)
             ->with(['balances' => function ($query) use ($openingBalanceDate) {
-                $endOfDay = \Carbon\Carbon::parse($openingBalanceDate)->endOfDay();
-                $query->where('date_time', '<=', $endOfDay)
+                $startOfDay = Carbon::parse($openingBalanceDate)->startOfDay();
+                // We look for the last balance recorded *before* the start of the opening day.
+                $query->where('date_time', '<', $startOfDay)
                     ->orderByDesc('date_time');
             }])->get();
-
-        foreach ($accountsWithOpeningBalance as $account) {
-            $account->opening_balance = $account->balances->first(); // fallback to the latest available one
-        }
 
         $openingBalance = $accountsWithOpeningBalance->sum(fn ($acc) => $acc->balances->first()?->amount ?? 0);
         $totalCredit = (clone $transactionQuery)->where('credit_debit_indicator', 'C')->sum('transaction_amount');
         $totalDebit = abs((clone $transactionQuery)->where('credit_debit_indicator', 'D')->sum('transaction_amount'));
-        $closingBalance = $openingBalance + $totalCredit - $totalDebit;
+//        $closingBalance = $openingBalance + $totalCredit - $totalDebit;
+
+        // --- 4. Calculate Closing Balance from the 'balances' table ---
+
+        // Determine the target date for the closing balance.
+        // If an end date is provided and it's in the past or today, use it.
+        // Otherwise, use today's date. This handles future dates by fetching the latest available balance.
+        $closingBalanceTargetDate = ($endDate && Carbon::parse($endDate)->isPast()) ? $endDate : now();
+
+        // Start with the base account query for closing balance calculation.
+        $closingBalanceAccountQuery = Account::query()->where('company_code', $user['company_code']);
+
+        // IMPORTANT: Apply the account number filter if it exists.
+        if ($accountNumber) {
+            $closingBalanceAccountQuery->where('account_number', $accountNumber);
+        }
+
+        // Get the relevant accounts with their latest balance up to the end of the target date.
+        // This correctly finds the latest balance on or before the target date (e.g., Friday's balance for a Sunday request).
+        $accountsWithClosingBalance = $closingBalanceAccountQuery
+            ->with(['balances' => function ($query) use ($closingBalanceTargetDate) {
+                $endOfDay = Carbon::parse($closingBalanceTargetDate)->endOfDay();
+                $query->where('date_time', '<=', $endOfDay)
+                    ->orderByDesc('date_time'); // Order by date to get the most recent one first
+            }])->get();
+
+        // Sum the latest balance from each filtered account.
+        $closingBalance = $accountsWithClosingBalance->sum(fn ($acc) => $acc->balances->first()?->amount ?? 0);
 
         // --- 4. Prepare descriptions and return Stat cards ---
         $descSuffix = ($accountNumber || $startDate || $endDate) ? ' (filtered)' : '';

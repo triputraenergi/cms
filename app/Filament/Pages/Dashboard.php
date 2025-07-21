@@ -69,7 +69,7 @@ class Dashboard extends Page implements HasForms
                         ->afterStateUpdated(function ($state) {
                             $this->dispatch('updateWidgetData', data: $this->filters);
                             $this->dispatch('refresh');
-                        })->live(debounce: 500),
+                        }),
 
                     Select::make('period')
                         ->label('Period')
