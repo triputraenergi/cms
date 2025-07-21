@@ -181,7 +181,7 @@ class Dashboard extends Page implements HasForms
                     $action->disabled();
 
                     // make post request to http://localhost:8080/api/refresh
-                    $response = Http::post('http://localhost:8080/api/hsbc/refresh');
+                    $response = Http::post(config("services.middleware.url") .'/api/hsbc/refresh');
 
                     // Optional: Check if the request was successful and handle errors
                     if ($response->failed()) {
