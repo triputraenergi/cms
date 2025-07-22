@@ -73,6 +73,8 @@ class Balance extends Model
         'amount' => 'decimal:4',
         'credit_line_included' => 'boolean',
         'credit_line_amount' => 'decimal:4',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /*
