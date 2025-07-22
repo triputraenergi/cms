@@ -122,8 +122,8 @@ class Dashboard extends Page implements HasForms
                                     $this->dispatch('updateWidgetData', data: $this->filters);
                                     break;
                                 default:
-                                    $set('start_date', null);
-                                    $set('end_date', null);
+//                                    $set('start_date', null);
+//                                    $set('end_date', null);
                                     $this->dispatch('updateWidgetData', data: $this->filters);
                                     break;
                             }
