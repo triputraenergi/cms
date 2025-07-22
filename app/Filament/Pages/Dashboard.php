@@ -6,6 +6,8 @@ use App\Filament\Resources\AccountResource\Widgets\AccountStats;
 use App\Filament\Resources\BalanceResource\Widgets\BalanceChart;
 use App\Filament\Resources\TransactionResource\Widgets\LatestTransactions;
 use App\Models\Account;
+use App\Models\Balance;
+use App\Models\Transaction;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Grid;
@@ -48,7 +50,20 @@ class Dashboard extends Page implements HasForms
         // because its state is bound to the $filters property.
         $this->filters['start_date'] = $this->filters['start_date'] ?? now()->startOfMonth()->toDateString();
         $this->filters['end_date'] = $this->filters['end_date'] ?? now()->endOfMonth()->toDateString();
-        $this->lastRefreshed = now()->tz('Asia/Jakarta')->format('g:i:s A');
+        $lastBalance = Balance::query()->latest('updated_at')->first();
+        $timestamp = $lastBalance->updated_at;
+        $formattedDate = '';
+
+        if ($timestamp->isToday()) {
+            $formattedDate = 'today ' . $timestamp->format('H:i:s');
+        } elseif ($timestamp->isYesterday()) {
+            $formattedDate = 'yesterday ' . $timestamp->format('H:i:s');
+        } else {
+            $formattedDate = $timestamp->format('d-m-Y H:i:s');
+        }
+
+        // Now $this->lastRefreshed holds the conditionally formatted string.
+        $this->lastRefreshed = $formattedDate;
     }
 
     /**
@@ -172,7 +187,8 @@ class Dashboard extends Page implements HasForms
                 ->label('Refresh')
                 ->color('gray')
                 ->icon('heroicon-o-arrow-path')
-                ->tooltip('Last refreshed at ' . $this->lastRefreshed)
+                ->tooltip(fn () => 'Last refreshed at ' . $this->lastRefreshed)
+
                 ->action(function (\Filament\Actions\Action $action) {
                     // 1. Before the logic runs, change the icon to the spinning version
                     $action->icon('heroicon-o-arrow-path-solid animate-spin');
@@ -180,8 +196,8 @@ class Dashboard extends Page implements HasForms
                     // This makes the button temporarily unavailable to prevent double-clicking
                     $action->disabled();
 
-                    // make post request to http://localhost:8080/api/refresh
-                    $response = Http::post(config("services.middleware.url") .'/api/hsbc/refresh');
+                    // make post request to middleware api to refresh data
+                    $response = Http::post(config("services.middleware.url") .'/api/hsbc/refresh?companyCode=' . auth()->user()->company_code);
 
                     // Optional: Check if the request was successful and handle errors
                     if ($response->failed()) {
@@ -191,7 +207,22 @@ class Dashboard extends Page implements HasForms
                         Notification::make()->title('Refreshed successfully!')->success()->send();
                     }
                     // 2. Your core logic to refresh the data
-                    $this->lastRefreshed = now()->tz('Asia/Jakarta')->format('g:i:s A');
+//                    $this->lastRefreshed = now()->tz('Asia/Jakarta')->format('g:i:s A');
+
+                    $timestamp = now()->tz('Asia/Jakarta');
+                    $formattedDate = '';
+
+                    if ($timestamp->isToday()) {
+                        $formattedDate = 'today ' . $timestamp->format('H:i:s');
+                    } elseif ($timestamp->isYesterday()) {
+                        $formattedDate = 'yesterday ' . $timestamp->format('H:i:s');
+                    } else {
+                        $formattedDate = $timestamp->format('d-m-Y H:i:s');
+                    }
+
+                    // Now $this->lastRefreshed holds the conditionally formatted string.
+                    $this->lastRefreshed = $formattedDate;
+
 
                     // 3. After the logic is done, change the icon back to the original
                     $action->icon('heroicon-o-arrow-path');
@@ -199,6 +230,8 @@ class Dashboard extends Page implements HasForms
                     // Re-enable the button
                     $action->disabled(false);
                     $this->dispatch('updateWidgetData', data: $this->filters);
+                    $this->dispatch('$refresh');
+
                 })
         ];
 

@@ -90,6 +90,8 @@ class Transaction extends Model
         'booking_date_time' => 'date',
         'value_date_time' => 'date',
         'transaction_amount' => 'decimal:4',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /*
