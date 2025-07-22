@@ -21,6 +21,7 @@ use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class Dashboard extends Page implements HasForms
 {
@@ -196,8 +197,18 @@ class Dashboard extends Page implements HasForms
                     // This makes the button temporarily unavailable to prevent double-clicking
                     $action->disabled();
 
+                    $apiUrl = config('services.middleware.url');
+                    $apiKey = config('services.middleware.key');
+
                     // make post request to middleware api to refresh data
-                    $response = Http::post(config("services.middleware.url") .'/api/hsbc/refresh?companyCode=' . auth()->user()->company_code);
+                    $data = [];
+
+                    // Add the withHeaders() call to include the missing header.
+                    $response = Http::withHeaders([
+                            'X-API-KEY' => $apiKey,
+                            'Accept' => 'application/json',
+                        ])
+                        ->post($apiUrl .'/api/hsbc/refresh?companyCode=' . auth()->user()->company_code, $data);
 
                     // Optional: Check if the request was successful and handle errors
                     if ($response->failed()) {

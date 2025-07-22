@@ -16,11 +16,11 @@ Route::post('/test', function () {
 
 Route::post('/signs', [\App\Http\Controllers\PgpEncryptController::class, 'handlePgp']);
 
-Route::get('/php-user', function () {
-    return get_current_user(); // or: exec('whoami');
-});
-
-// This route is only accessible by services with a valid Sanctum token.
-Route::middleware('auth:sanctum')->prefix('internal')->group(function () {
-    Route::post('/validate-user', [\App\Http\Controllers\Internal\AuthController::class, 'validateUser']);
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    // If the request makes it here, the token is valid.
+    // Return the authenticated user's data.
+    \Illuminate\Support\Facades\Log::info('Laravel received token validation request from Spring Boot', [
+        'user' => $request->user(),
+    ]);
+    return $request->user();
 });
