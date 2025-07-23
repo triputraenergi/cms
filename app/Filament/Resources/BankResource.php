@@ -35,6 +35,7 @@ class BankResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('institution_code')
+                    ->label("Bank Code")
                     ->searchable(),
                 Tables\Columns\TextColumn::make('bank_name')
                     ->searchable(),

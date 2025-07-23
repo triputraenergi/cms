@@ -32,6 +32,7 @@ class AccountStats extends BaseWidget
 
         // --- 1. Get filter values ---
         $accountNumber = $this->filters['account_number'] ?? null;
+        $institutionCode = $this->filters['institution_code'] ?? null;
         $startDate = $this->filters['start_date'] ?? null;
         $endDate = $this->filters['end_date'] ?? null;
 
@@ -41,6 +42,10 @@ class AccountStats extends BaseWidget
         $transactionQuery = Transaction::query()->whereHas('account.company', fn ($q) =>
         $q->where('code', $user['company_code'])
         );
+
+        if ($institutionCode) {
+            $accountQuery = $accountQuery->where('institution_code', $institutionCode);
+        }
 
         if ($accountNumber) {
             $account = Account::find($accountNumber);
@@ -74,7 +79,6 @@ class AccountStats extends BaseWidget
         $openingBalance = $accountsWithOpeningBalance->sum(fn ($acc) => $acc->balances->first()?->amount ?? 0);
         $totalCredit = (clone $transactionQuery)->where('credit_debit_indicator', 'C')->sum('transaction_amount');
         $totalDebit = abs((clone $transactionQuery)->where('credit_debit_indicator', 'D')->sum('transaction_amount'));
-//        $closingBalance = $openingBalance + $totalCredit - $totalDebit;
 
         // --- 4. Calculate Closing Balance from the 'balances' table ---
 
@@ -84,7 +88,7 @@ class AccountStats extends BaseWidget
         $closingBalanceTargetDate = ($endDate && Carbon::parse($endDate)->isPast()) ? $endDate : now();
 
         // Start with the base account query for closing balance calculation.
-        $closingBalanceAccountQuery = Account::query()->where('company_code', $user['company_code']);
+        $closingBalanceAccountQuery = (clone $accountQuery);
 
         // IMPORTANT: Apply the account number filter if it exists.
         if ($accountNumber) {
