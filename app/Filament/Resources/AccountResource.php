@@ -36,9 +36,10 @@ class AccountResource extends Resource
                     ->label("Company")
                     ->required()
                     ->options(Company::all()->pluck('name', 'code')),
-                Forms\Components\TextInput::make('institution_code')
+                Forms\Components\Select::make('institution_code')
+                    ->label("Bank")
+                    ->relationship('bank', 'bank_name')
                     ->required()
-                    ->maxLength(10),
             ]);
     }
 
@@ -55,7 +56,8 @@ class AccountResource extends Resource
                 Tables\Columns\TextColumn::make('company.name')
                     ->label("Company")
                     ->searchable(),
-                Tables\Columns\TextColumn::make('institution_code')
+                Tables\Columns\TextColumn::make('bank.bank_name')
+                    ->label("Bank")
                     ->searchable(),
             ])
             ->filters([

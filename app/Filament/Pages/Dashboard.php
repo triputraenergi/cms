@@ -7,6 +7,7 @@ use App\Filament\Resources\BalanceResource\Widgets\BalanceChart;
 use App\Filament\Resources\TransactionResource\Widgets\LatestTransactions;
 use App\Models\Account;
 use App\Models\Balance;
+use App\Models\Bank;
 use App\Models\Transaction;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -37,6 +38,7 @@ class Dashboard extends Page implements HasForms
      * It will be updated automatically by the form.
      */
     public ?array $filters = [
+        'institution_code' => null,
         'account_number' => null,
         'period' => 'custom',
         'start_date' => null,
@@ -74,11 +76,36 @@ class Dashboard extends Page implements HasForms
     {
         return $form
             ->schema([
-                Grid::make(4)->schema([
+                Grid::make(5)->schema([
                     // NOTE: The 'filters.' prefix is REMOVED from all component names.
+                    Select::make('institution_code')
+                        ->label('Bank')
+                        ->options(Bank::query()->pluck('bank_name', 'institution_code'))
+                        ->searchable()
+                        ->placeholder('All Banks')
+                        ->reactive()
+                        ->afterStateUpdated(function ($state, callable $set) {
+                            $set('account_number', null);
+                            $this->dispatch('updateWidgetData', data: $this->filters);
+                            $this->dispatch('refresh');
+                        }),
                     Select::make('account_number')
                         ->label('Account')
-                        ->options(Account::query()->where('company_code', Auth::user()['company_code'])->pluck('account_number', 'account_number'))
+                        ->options(function (callable $get) {
+                            // Get the current value of the institution_code filter.
+                            $institutionCode = $get('institution_code');
+                            // Start the query.
+                            $query = Account::query()
+                                ->where('company_code', Auth::user()->company_code);
+
+                            // Conditionally apply the where clause if an institution is selected.
+                            if ($institutionCode) {
+                                $query->where('institution_code', $institutionCode);
+                            }
+
+                            // Return the final list of options.
+                            return $query->pluck('account_number', 'account_number');
+                        })
                         ->searchable()
                         ->placeholder('All Accounts')
                         ->reactive()

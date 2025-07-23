@@ -20,30 +20,59 @@ class LatestTransactions extends BaseWidget
 
     public function table(Table $table): Table
     {
-        $user = Auth::user();
-        $accountNumber = $this->filters['account_number'] ?? null;
-        $startDate = $this->filters['start_date'] ?? null;
-        $endDate = $this->filters['end_date'] ?? null;
-        $creditDebitIndicator = $this->filters['credit_debit_indicator'] ?? null;
-
         return $table
-            ->query(Transaction::query()
-//                ->with(['account'])
-                ->when($accountNumber, fn ($query, $account) =>
-                    $query->where('account_identification', $account)
-                )->when($startDate, fn ($query, $startDate) =>
-                $query->whereDate('value_date_time', '>=', $startDate)
-                )->when($endDate, fn ($query, $endDate) =>
-                $query->whereDate('value_date_time', '<=', $endDate)
-                )->when($creditDebitIndicator, fn ($query, $creditDebitIndicator) =>
-                $query->where('credit_debit_indicator', $creditDebitIndicator)
-                )->whereHas('account.company', fn ($query) =>
-                $query->where('code', $user['company_code'])
-                )
-            )
+
+            ->query(function () {
+                // Get the current, up-to-date filter values
+                $user = Auth::user();
+                $institutionCode = $this->filters['institution_code'] ?? null;
+                $accountNumber = $this->filters['account_number'] ?? null;
+                $startDate = $this->filters['start_date'] ?? null;
+                $endDate = $this->filters['end_date'] ?? null;
+                $creditDebitIndicator = $this->filters['credit_debit_indicator'] ?? null;
+
+                // Start the base query
+                $query = Transaction::query();
+
+                // Apply Account Number filter
+                $query->when($accountNumber, function ($q, $account) {
+                    return $q->where('account_identification', $account);
+                });
+
+                // Apply Institution Code filter
+                $query->when($institutionCode, function ($q, $code) {
+                    $cleanCode = trim($code);
+                    // This log should now print correctly whenever an institution is selected
+                    return $q->whereHas('account', function ($subQuery) use ($cleanCode) {
+                        $subQuery->where('institution_code', $cleanCode);
+                    });
+                });
+
+                // Apply Start Date filter
+                $query->when($startDate, function ($q, $date) {
+                    return $q->whereDate('value_date_time', '>=', $date);
+                });
+
+                // Apply End Date filter
+                $query->when($endDate, function ($q, $date) {
+                    return $q->whereDate('value_date_time', '<=', $date);
+                });
+
+                // Apply Credit/Debit filter
+                $query->when($creditDebitIndicator, function ($q, $indicator) {
+                    return $q->where('credit_debit_indicator', $indicator);
+                });
+
+                // Apply the mandatory company filter
+                $query->whereHas('account.company', function ($q) use ($user) {
+                    return $q->where('code', $user['company_code']);
+                });
+
+                return $query;
+            })
             ->columns([
-                Tables\Columns\TextColumn::make('account.institution_code')
-                    ->label('Institution Code'),
+                Tables\Columns\TextColumn::make('account.bank.bank_name')
+                    ->label('Bank'),
                 Tables\Columns\TextColumn::make('account_identification')
                     ->label('Account Number'),
                 Tables\Columns\TextColumn::make('transaction_information')
