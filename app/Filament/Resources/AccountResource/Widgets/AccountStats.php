@@ -26,6 +26,11 @@ class AccountStats extends BaseWidget
      */
     public ?array $filters = [];
 
+    protected function getColumns(): int
+    {
+        return 2;
+    }
+
     protected function getCards(): array
     {
         $user = Auth::user();
@@ -76,9 +81,9 @@ class AccountStats extends BaseWidget
                     ->orderByDesc('date_time');
             }])->get();
 
-        $openingBalance = $accountsWithOpeningBalance->sum(fn ($acc) => $acc->balances->first()?->amount ?? 0);
-        $totalCredit = (clone $transactionQuery)->where('credit_debit_indicator', 'C')->sum('transaction_amount');
-        $totalDebit = abs((clone $transactionQuery)->where('credit_debit_indicator', 'D')->sum('transaction_amount'));
+        $openingBalance = $accountsWithOpeningBalance->sum(fn ($acc) => $acc->balances->first()?->idr_amount ?? 0);
+        $totalCredit = (clone $transactionQuery)->where('credit_debit_indicator', 'C')->get()->sum('idr_amount');
+        $totalDebit = abs((clone $transactionQuery)->where('credit_debit_indicator', 'D')->get()->sum('idr_amount'));
 
         // --- 4. Calculate Closing Balance from the 'balances' table ---
 
@@ -105,22 +110,23 @@ class AccountStats extends BaseWidget
             }])->get();
 
         // Sum the latest balance from each filtered account.
-        $closingBalance = $accountsWithClosingBalance->sum(fn ($acc) => $acc->balances->first()?->amount ?? 0);
+        $closingBalance = $accountsWithClosingBalance->sum(fn ($acc) => $acc->balances->first()?->idr_amount ?? 0);
 
         // --- 4. Prepare descriptions and return Stat cards ---
         $descSuffix = ($accountNumber || $startDate || $endDate) ? ' (filtered)' : '';
 
         return [
-            Stat::make('Beginning Balance', number_format($openingBalance, 2))
+            Stat::make('Beginning Balance', 'Rp. ' . number_format($openingBalance, 2, ',', '.'))
                 ->description('Sum of opening balances' . $descSuffix),
-            Stat::make('Total Debit Transactions', number_format($totalDebit, 2))
+            Stat::make('Ending Balance', 'Rp. ' . number_format($closingBalance, 2, ',', '.'))
+                ->description('Calculated ending balance' . $descSuffix),
+            Stat::make('Total Debit Transactions', 'Rp. ' . number_format($totalDebit, 2, ',', '.'))
                 ->description('Sum of all debit transactions' . $descSuffix)
                 ->color('danger'),
-            Stat::make('Total Credit Transactions', number_format($totalCredit, 2))
+            Stat::make('Total Credit Transactions', 'Rp. ' . number_format($totalCredit, 2, ',', '.'))
                 ->description('Sum of all credit transactions' . $descSuffix)
                 ->color('success'),
-            Stat::make('Ending Balance', number_format($closingBalance, 2))
-                ->description('Calculated ending balance' . $descSuffix),
+
         ];
     }
     #[On('updateWidgetData')]

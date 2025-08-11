@@ -108,4 +108,17 @@ class Transaction extends Model
      {
          return $this->belongsTo(Account::class, 'account_identification', 'account_number');
      }
+
+    public function transactionCurrency()
+    {
+        return $this->belongsTo(Currency::class, 'transaction_currency', 'code');
+    }
+    public function getConversionRateAttribute()
+    {
+        return $this->transactionCurrency?->conversion_rate ?? 1.0000;
+    }
+
+     public function getIdrAmountAttribute() {
+        return $this->transaction_amount * $this->conversion_rate;
+     }
 }

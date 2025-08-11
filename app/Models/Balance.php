@@ -101,4 +101,17 @@ class Balance extends Model
      {
          return $this->belongsTo(Account::class, 'account_identification', 'account_number');
      }
+
+    public function balanceCurrency()
+    {
+        return $this->belongsTo(Currency::class, 'currency', 'code');
+    }
+    public function getConversionRateAttribute()
+    {
+        return $this->balanceCurrency?->conversion_rate ?? 1.0000;
+    }
+
+    public function getIdrAmountAttribute() {
+        return $this->amount * $this->conversion_rate;
+    }
 }

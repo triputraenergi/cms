@@ -72,7 +72,7 @@ class BalanceResource extends Resource
                 Tables\Columns\TextColumn::make('date_time')
                     ->dateTime()
                     ->sortable(),
-            ])
+            ])->defaultSort('date_time', 'desc')
             ->filters([
                 Filter::make('created_at')
                     ->form([
