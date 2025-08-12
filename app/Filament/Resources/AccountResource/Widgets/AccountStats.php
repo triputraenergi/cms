@@ -77,15 +77,15 @@ class AccountStats extends BaseWidget
         if ($accountNumber) {
             $account = Account::find($accountNumber);
             if ($account) {
-                $transactionQuery->where('account_identification', $account->account_identification);
+                $transactionQuery = $transactionQuery->where('account_identification', $accountNumber);
             }
         }
 
         if ($startDate) {
-            $transactionQuery->whereDate('value_date_time', '>=', $startDate);
+            $transactionQuery = $transactionQuery->whereDate('value_date_time', '>=', $startDate);
         }
         if ($endDate) {
-            $transactionQuery->whereDate('value_date_time', '<=', $endDate);
+            $transactionQuery = $transactionQuery->whereDate('value_date_time', '<=', $endDate);
         }
 
         // --- 3. Execute queries and calculate totals ---
@@ -103,7 +103,6 @@ class AccountStats extends BaseWidget
                     ->orderByDesc('date_time');
             }])->get();
 
-        $openingBalance = $accountsWithOpeningBalance->sum(fn ($acc) => $acc->balances->first()?->idr_amount ?? 0);
 //        $totalCredit = (clone $transactionQuery)->where('credit_debit_indicator', 'C')->get()->sum('idr_amount');
 //        $totalDebit = abs((clone $transactionQuery)->where('credit_debit_indicator', 'D')->get()->sum('idr_amount'));
 
@@ -128,8 +127,10 @@ class AccountStats extends BaseWidget
 
         // IMPORTANT: Apply the account number filter if it exists.
         if ($accountNumber) {
+            $accountsWithOpeningBalance = $accountsWithOpeningBalance->where('account_number', $accountNumber);
             $closingBalanceAccountQuery->where('account_number', $accountNumber);
         }
+        $openingBalance = $accountsWithOpeningBalance->sum(fn ($acc) => $acc->balances->first()?->idr_amount ?? 0);
 
         // Get the relevant accounts with their latest balance up to the end of the target date.
         // This correctly finds the latest balance on or before the target date (e.g., Friday's balance for a Sunday request).
