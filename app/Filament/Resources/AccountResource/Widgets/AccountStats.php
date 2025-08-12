@@ -98,8 +98,9 @@ class AccountStats extends BaseWidget
         $accountsWithOpeningBalance = (clone $accountQuery)
             ->with(['balances' => function ($query) use ($openingBalanceDate) {
                 $startOfDay = Carbon::parse($openingBalanceDate)->startOfDay();
+
                 // We look for the last balance recorded *before* the start of the opening day.
-                $query->where('date_time', '<', $startOfDay)
+                $query->whereDate('date_time', '<=', $startOfDay)
                     ->orderByDesc('date_time');
             }])->get();
 
@@ -137,7 +138,7 @@ class AccountStats extends BaseWidget
         $accountsWithClosingBalance = $closingBalanceAccountQuery
             ->with(['balances' => function ($query) use ($closingBalanceTargetDate) {
                 $endOfDay = Carbon::parse($closingBalanceTargetDate)->endOfDay();
-                $query->where('date_time', '<=', $endOfDay)
+                $query->whereDate('date_time', '<=', $endOfDay)
                     ->orderByDesc('date_time'); // Order by date to get the most recent one first
             }])->get();
 
