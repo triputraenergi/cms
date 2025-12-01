@@ -54,7 +54,7 @@ class Dashboard extends Page implements HasForms
         $this->filters['start_date'] = $this->filters['start_date'] ?? now()->startOfMonth()->toDateString();
         $this->filters['end_date'] = $this->filters['end_date'] ?? now()->endOfMonth()->toDateString();
         $lastBalance = Balance::query()->latest('updated_at')->first();
-        $timestamp = $lastBalance->updated_at;
+        $timestamp = $lastBalance?->updated_at ?? now();
         $formattedDate = '';
 
         if ($timestamp->isToday()) {
@@ -150,8 +150,8 @@ class Dashboard extends Page implements HasForms
                                     $this->dispatch('updateWidgetData', data: $this->filters);
                                     break;
                                 default:
-//                                    $set('start_date', null);
-//                                    $set('end_date', null);
+                                    //                                    $set('start_date', null);
+                                    //                                    $set('end_date', null);
                                     $this->dispatch('updateWidgetData', data: $this->filters);
                                     break;
                             }
@@ -160,7 +160,7 @@ class Dashboard extends Page implements HasForms
                     DatePicker::make('start_date')
                         ->label('Start Date')
                         ->reactive()
-                        ->visible(fn (callable $get) => $get('period') === 'custom')
+                        ->visible(fn(callable $get) => $get('period') === 'custom')
                         ->afterStateUpdated(function ($state) {
                             $this->dispatch('updateWidgetData', data: $this->filters);
                         }),
@@ -168,7 +168,7 @@ class Dashboard extends Page implements HasForms
                     DatePicker::make('end_date')
                         ->label('End Date')
                         ->reactive()
-                        ->visible(fn (callable $get) => $get('period') === 'custom')
+                        ->visible(fn(callable $get) => $get('period') === 'custom')
                         ->afterStateUpdated(function ($state) {
                             $this->dispatch('updateWidgetData', data: $this->filters);
                         }),
@@ -215,7 +215,7 @@ class Dashboard extends Page implements HasForms
                 ->label('Refresh')
                 ->color('gray')
                 ->icon('heroicon-o-arrow-path')
-                ->tooltip(fn () => 'Last refreshed at ' . $this->lastRefreshed)
+                ->tooltip(fn() => 'Last refreshed at ' . $this->lastRefreshed)
 
                 ->action(function (\Filament\Actions\Action $action) {
                     // 1. Before the logic runs, change the icon to the spinning version
@@ -232,20 +232,20 @@ class Dashboard extends Page implements HasForms
 
                     // Add the withHeaders() call to include the missing header.
                     $response = Http::withHeaders([
-                            'X-API-KEY' => $apiKey,
-                            'Accept' => 'application/json',
-                        ])
-                        ->post($apiUrl .'/api/hsbc/refresh?companyCode=' . auth()->user()->company_code, $data);
+                        'X-API-KEY' => $apiKey,
+                        'Accept' => 'application/json',
+                    ])
+                        ->post($apiUrl . '/api/hsbc/refresh?companyCode=' . auth()->user()->company_code, $data);
 
                     // Optional: Check if the request was successful and handle errors
                     if ($response->failed()) {
                         // Handle error, maybe show a notification
-                         Notification::make()->title('Refresh failed!')->danger()->send();
+                        Notification::make()->title('Refresh failed!')->danger()->send();
                     } else {
                         Notification::make()->title('Refreshed successfully!')->success()->send();
                     }
                     // 2. Your core logic to refresh the data
-//                    $this->lastRefreshed = now()->tz('Asia/Jakarta')->format('g:i:s A');
+                    //                    $this->lastRefreshed = now()->tz('Asia/Jakarta')->format('g:i:s A');
 
                     $timestamp = now()->tz('Asia/Jakarta');
                     $formattedDate = '';
@@ -269,9 +269,7 @@ class Dashboard extends Page implements HasForms
                     $action->disabled(false);
                     $this->dispatch('updateWidgetData', data: $this->filters);
                     $this->dispatch('$refresh');
-
                 })
         ];
-
     }
 }

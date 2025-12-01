@@ -27,7 +27,8 @@ class BankResource extends Resource
                     ->maxLength(100),
                 Forms\Components\TextInput::make('bic')
                     ->maxLength(15),
-            ]);
+                Forms\Components\TextInput::make('institution_code')
+        ]);
     }
 
     public static function table(Table $table): Table

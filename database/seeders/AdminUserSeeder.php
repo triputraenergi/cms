@@ -20,7 +20,7 @@ class AdminUserSeeder extends Seeder
                 'name' => 'Admin',
                 'password' => Hash::make('Admin1234#'),
                 'email_verified_at' => now(),
-                'is_admin' => true, // or assign Filament role
+                // 'is_admin' => true, // or assign Filament role
             ]
         );
     }
