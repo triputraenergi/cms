@@ -24,6 +24,9 @@ class AccountResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\TextInput::make('account_number')
+                    ->required()
+                    ->maxLength(15),
                 Forms\Components\TextInput::make('account_country')
                     ->required()
                     ->maxLength(2),
