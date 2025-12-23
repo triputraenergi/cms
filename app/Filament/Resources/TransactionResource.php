@@ -156,7 +156,7 @@ class TransactionResource extends Resource
                 ExportAction::make()
                     ->exporter(TransactionExporter::class)
                     ->fileDisk('public')
-                    ->fileName('transactions'),
+                    ->fileName('transactions_export_' . now()->format('Y_m_d_H_i_s')),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
