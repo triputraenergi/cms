@@ -155,6 +155,7 @@ class TransactionResource extends Resource
             ->headerActions([
                 ExportAction::make()
                     ->exporter(TransactionExporter::class)
+                    ->fileDisk('public')
                     ->fileName('transactions'),
             ])
             ->bulkActions([
