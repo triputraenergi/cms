@@ -155,7 +155,6 @@ class TransactionResource extends Resource
             ->headerActions([
                 ExportAction::make()
                     ->exporter(TransactionExporter::class)
-                    ->formats(['xlsx', 'csv', 'pdf'])
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
