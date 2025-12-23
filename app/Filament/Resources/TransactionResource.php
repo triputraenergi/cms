@@ -155,6 +155,8 @@ class TransactionResource extends Resource
             ->headerActions([
                 ExportAction::make()
                     ->exporter(TransactionExporter::class)
+                    ->fileDisk('s3')
+                    ->fileName('transactions_export.xlsx'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
