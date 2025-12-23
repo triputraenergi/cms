@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Exports\TransactionExporter;
 use App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource\RelationManagers;
 use App\Models\Account;
 use App\Models\Transaction;
+use Filament\Tables\Actions\ExportAction;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Form;
@@ -115,18 +117,18 @@ class TransactionResource extends Resource
                         return $query
                             ->when(
                                 $data['created_from'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('value_date_time', '>=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('value_date_time', '>=', $date),
                             )
                             ->when(
                                 $data['created_until'],
-                                fn (Builder $query, $date): Builder => $query->whereDate('value_date_time', '<=', $date),
+                                fn(Builder $query, $date): Builder => $query->whereDate('value_date_time', '<=', $date),
                             );
                     }),
                 Tables\Filters\SelectFilter::make('account_identification')
                     ->label('Account ID')
                     ->options(
-                    // This fetches all unique account identifications from your table
-                    // to populate the dropdown.
+                        // This fetches all unique account identifications from your table
+                        // to populate the dropdown.
                         Transaction::query()
                             ->distinct()
                             ->pluck('account_identification', 'account_identification')
@@ -137,8 +139,8 @@ class TransactionResource extends Resource
                 Tables\Filters\SelectFilter::make('credit_debit_indicator')
                     ->label('Credit/Debit')
                     ->options(
-                    // This fetches all unique account identifications from your table
-                    // to populate the dropdown.
+                        // This fetches all unique account identifications from your table
+                        // to populate the dropdown.
                         Transaction::query()
                             ->distinct()
                             ->pluck('credit_debit_indicator', 'credit_debit_indicator')
@@ -149,6 +151,11 @@ class TransactionResource extends Resource
             ], layout: Tables\Enums\FiltersLayout::AboveContent)
             ->actions([
                 Tables\Actions\EditAction::make(),
+            ])
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(TransactionExporter::class)
+                    ->formats(['xlsx', 'csv', 'pdf'])
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
