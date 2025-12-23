@@ -155,8 +155,7 @@ class TransactionResource extends Resource
             ->headerActions([
                 ExportAction::make()
                     ->exporter(TransactionExporter::class)
-                    ->fileDisk('local')
-                    ->fileName('transactions_export.xlsx'),
+                    ->fileName('transactions'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
