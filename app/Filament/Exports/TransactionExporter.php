@@ -19,21 +19,18 @@ class TransactionExporter extends Exporter
             ExportColumn::make('bank_transaction_code_code'),
             ExportColumn::make('bank_transaction_code_subcode'),
             ExportColumn::make('booking_date_time'),
-            ExportColumn::make('created_at'),
             ExportColumn::make('credit_debit_indicator'),
             ExportColumn::make('proprietary_bank_transaction_code_code'),
             ExportColumn::make('proprietary_bank_transaction_code_issuer'),
             ExportColumn::make('requestor_account_id'),
             ExportColumn::make('reversal_indicator'),
             ExportColumn::make('statement_reference'),
-            ExportColumn::make('transaction_amount'),
             ExportColumn::make('transaction_amount')
                 ->state(fn($record) => '=' . (int) $record->transaction_amount),
             ExportColumn::make('transaction_currency'),
             ExportColumn::make('transaction_information'),
             ExportColumn::make('transaction_reference'),
             ExportColumn::make('transaction_status'),
-            ExportColumn::make('updated_at'),
             ExportColumn::make('value_date_time'),
         ];
     }
