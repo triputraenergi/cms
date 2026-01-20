@@ -26,8 +26,9 @@ class TransactionExporter extends Exporter
             ExportColumn::make('requestor_account_id'),
             ExportColumn::make('reversal_indicator'),
             ExportColumn::make('statement_reference'),
+            ExportColumn::make('transaction_amount'),
             ExportColumn::make('transaction_amount')
-                ->state(fn($record) => (float) $record->transaction_amount),
+                ->state(fn($record) => '=' . (int) $record->transaction_amount),
             ExportColumn::make('transaction_currency'),
             ExportColumn::make('transaction_information'),
             ExportColumn::make('transaction_reference'),

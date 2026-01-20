@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Exports\TransactionExporter;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource\RelationManagers;
 use App\Models\Account;
@@ -156,6 +157,9 @@ class TransactionResource extends Resource
                 ExportAction::make()
                     ->exporter(TransactionExporter::class)
                     ->fileDisk('public')
+                    ->formats([
+                        ExportFormat::Xlsx,
+                    ])
                     ->fileName('transactions_export_' . now()->format('Y_m_d_H_i_s')),
             ])
             ->bulkActions([
