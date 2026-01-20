@@ -21,3 +21,22 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+
+
+# Laravel runtime
+/storage/*
+!/storage/.gitignore
+
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+
+# Secrets
+*.key
+*.pem
+*.pgp
+
+# OS junk
+desktop.ini
+.DS_Store
+
