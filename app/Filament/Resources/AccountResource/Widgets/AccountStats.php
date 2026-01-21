@@ -47,9 +47,6 @@ class AccountStats extends BaseWidget
         // --- 2. Build the base queries and apply filters ---
 
         $accountQuery = Account::query()->where('company_code', $user['company_code']);
-//        $transactionQuery = Transaction::query()->whereHas('account.company', fn ($q) =>
-//        $q->where('code', $user['company_code'])
-//        );
 
         $companyCode = $user['company_code'];
 
@@ -104,8 +101,6 @@ class AccountStats extends BaseWidget
                     ->orderByDesc('date_time');
             }])->get();
 
-//        $totalCredit = (clone $transactionQuery)->where('credit_debit_indicator', 'C')->get()->sum('idr_amount');
-//        $totalDebit = abs((clone $transactionQuery)->where('credit_debit_indicator', 'D')->get()->sum('idr_amount'));
 
         $totalCredit = (clone $transactionQuery)
             ->where('credit_debit_indicator', 'C')
@@ -131,32 +126,42 @@ class AccountStats extends BaseWidget
             $accountsWithOpeningBalance = $accountsWithOpeningBalance->where('account_number', $accountNumber);
             $closingBalanceAccountQuery->where('account_number', $accountNumber);
         }
-        $openingBalance = $accountsWithOpeningBalance->sum(fn ($acc) => $acc->balances->first()?->idr_amount ?? 0);
+
+        $openingBalance = $accountsWithOpeningBalance->sum(fn($acc) => $acc->balances->first()?->idr_amount ?? 0);
 
         // Get the relevant accounts with their latest balance up to the end of the target date.
         // This correctly finds the latest balance on or before the target date (e.g., Friday's balance for a Sunday request).
         $accountsWithClosingBalance = $closingBalanceAccountQuery
             ->with(['balances' => function ($query) use ($closingBalanceTargetDate) {
+
                 $endOfDay = Carbon::parse($closingBalanceTargetDate)->endOfDay();
-                $query->whereDate('date_time', '<=', $endOfDay)
-                    ->orderByDesc('date_time'); // Order by date to get the most recent one first
-            }])->get();
+
+
+                $query->select('balance_id', 'account_identification', 'amount', 'date_time')
+                    ->where('date_time', '>', $endOfDay)
+                    ->orderBy('date_time', 'asc')
+                    ->limit(1);
+            }])
+            ->get();
+
+
+        // Log::debug('closingBalance', [$accountsWithClosingBalance]);
 
         // Sum the latest balance from each filtered account.
-        $closingBalance = $accountsWithClosingBalance->sum(fn ($acc) => $acc->balances->first()?->idr_amount ?? 0);
+        $closingBalance = $accountsWithClosingBalance->sum(fn($acc) => $acc->balances->first()?->idr_amount ?? 0);
 
         // --- 4. Prepare descriptions and return Stat cards ---
         $descSuffix = ($accountNumber || $startDate || $endDate) ? ' (filtered)' : '';
 
         return [
-            Stat::make('Beginning Balance','Rp. ' . number_format($openingBalance, 2, ',', '.'))
+            Stat::make('Beginning Balance', 'Rp. ' . number_format($openingBalance, 2, ',', '.'))
                 ->description('Sum of opening balances' . $descSuffix),
-            Stat::make('Ending Balance','Rp. ' . number_format($closingBalance, 2, ',', '.'))
+            Stat::make('Ending Balance', 'Rp. ' . number_format($closingBalance, 2, ',', '.'))
                 ->description('Calculated ending balance' . $descSuffix),
-            Stat::make('Total Debit Transactions','Rp. ' . number_format($totalDebit, 2, ',', '.'))
+            Stat::make('Total Debit Transactions', 'Rp. ' . number_format($totalDebit, 2, ',', '.'))
                 ->description('Sum of all debit transactions' . $descSuffix)
                 ->color('danger'),
-            Stat::make('Total Credit Transactions','Rp. ' . number_format($totalCredit, 2, ',', '.'))
+            Stat::make('Total Credit Transactions', 'Rp. ' . number_format($totalCredit, 2, ',', '.'))
                 ->description('Sum of all credit transactions' . $descSuffix)
                 ->color('success'),
 
