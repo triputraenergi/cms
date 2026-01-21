@@ -131,16 +131,44 @@ class AccountStats extends BaseWidget
 
         // Get the relevant accounts with their latest balance up to the end of the target date.
         // This correctly finds the latest balance on or before the target date (e.g., Friday's balance for a Sunday request).
+        // $isToday = $endDate && Carbon::parse($endDate)->isSameDay(now());
+
+        $isTodayOrFuture = !$endDate
+            || Carbon::parse($endDate)->greaterThanOrEqualTo(now()->startOfDay());
+
+        $closingBalanceTargetDate = $endDate ?? now();
+
         $accountsWithClosingBalance = $closingBalanceAccountQuery
-            ->with(['balances' => function ($query) use ($closingBalanceTargetDate) {
-
-                $endOfDay = Carbon::parse($closingBalanceTargetDate)->endOfDay();
+            ->with(['balances' => function ($query) use ($closingBalanceTargetDate, $isTodayOrFuture) {
 
 
-                $query->select('balance_id', 'account_identification', 'amount', 'date_time')
-                    ->where('date_time', '>', $endOfDay)
-                    ->orderBy('date_time', 'asc')
-                    ->limit(1);
+                if ($isTodayOrFuture) {
+                    // 🔥 KALAU endDate = NOW → ambil ITAV
+                    $query->select(
+                        'balance_id',
+                        'account_identification',
+                        'amount',
+                        'date_time',
+                        'balance_type'
+                    )
+                        ->where('balance_type', 'ITAV')
+                        ->orderByDesc('date_time')
+                        ->limit(1);
+                } else {
+                    // 📌 KALAU BUKAN TODAY → pakai snapshot biasa
+                    $endOfDay = Carbon::parse($closingBalanceTargetDate)->endOfDay();
+
+                    $query->select(
+                        'balance_id',
+                        'account_identification',
+                        'amount',
+                        'date_time',
+                        'balance_type'
+                    )
+                        ->where('date_time', '>', $endOfDay)
+                        ->orderBy('date_time', 'asc')
+                        ->limit(1);
+                }
             }])
             ->get();
 
