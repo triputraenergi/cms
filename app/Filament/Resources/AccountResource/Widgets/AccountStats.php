@@ -64,8 +64,7 @@ class AccountStats extends BaseWidget
                             ->whereColumn('accounts.company_code', 'companies.code')
                             ->whereRaw("companies.code COLLATE utf8mb4_unicode_ci = ?", [$companyCode]);
                     });
-            })
-            ->whereBetween(DB::raw('DATE(value_date_time)'), [$startDate, $endDate]);
+            });
 
         if ($institutionCode) {
             $accountQuery = $accountQuery->where('institution_code', $institutionCode);
@@ -95,11 +94,16 @@ class AccountStats extends BaseWidget
         $accountsWithOpeningBalance = (clone $accountQuery)
             ->with(['balances' => function ($query) use ($openingBalanceDate) {
                 $startOfDay = Carbon::parse($openingBalanceDate)->startOfDay();
+                $endOfDay   = Carbon::parse($openingBalanceDate)->endOfDay();
 
-                // We look for the last balance recorded *before* the start of the opening day.
-                $query->whereDate('date_time', '<=', $startOfDay)
-                    ->orderByDesc('date_time');
+                // Ambil balance di hari itu
+                $query->whereBetween('date_time', [$startOfDay, $endOfDay])
+                    ->orderByDesc('date_time')
+                    ->limit(1);
             }])->get();
+        Log::debug('accountsWithOpeningBalance', [$accountsWithOpeningBalance]);
+
+
 
 
         $totalCredit = (clone $transactionQuery)
@@ -107,16 +111,13 @@ class AccountStats extends BaseWidget
             ->selectRaw('SUM(transactions.transaction_amount * COALESCE(curr.conversion_rate, 1.0000)) AS total')
             ->value('total');
 
+
         $totalDebit = (clone $transactionQuery)
             ->where('credit_debit_indicator', 'D')
             ->selectRaw('SUM(transactions.transaction_amount * COALESCE(curr.conversion_rate, 1.0000)) AS total')
             ->value('total');
         // --- 4. Calculate Closing Balance from the 'balances' table ---
 
-        // Determine the target date for the closing balance.
-        // If an end date is provided and it's in the past or today, use it.
-        // Otherwise, use today's date. This handles future dates by fetching the latest available balance.
-        $closingBalanceTargetDate = ($endDate && Carbon::parse($endDate)->isPast()) ? $endDate : now();
 
         // Start with the base account query for closing balance calculation.
         $closingBalanceAccountQuery = (clone $accountQuery);
@@ -127,7 +128,22 @@ class AccountStats extends BaseWidget
             $closingBalanceAccountQuery->where('account_number', $accountNumber);
         }
 
-        $openingBalance = $accountsWithOpeningBalance->sum(fn($acc) => $acc->balances->first()?->idr_amount ?? 0);
+        $openingBalance = $accountsWithOpeningBalance->sum(function ($acc) use ($openingBalanceDate) {
+
+            $balance = $acc->balances->first();
+
+            if (!$balance) {
+                // fallback: ambil balance setelah tanggal itu
+                $fallback = $acc->balances()
+                    ->where('date_time', '>', Carbon::parse($openingBalanceDate)->endOfDay())
+                    ->orderBy('date_time', 'asc')
+                    ->first();
+
+                return $fallback?->idr_amount ?? 0;
+            }
+
+            return $balance->idr_amount ?? 0;
+        });
 
         // Get the relevant accounts with their latest balance up to the end of the target date.
         // This correctly finds the latest balance on or before the target date (e.g., Friday's balance for a Sunday request).
@@ -173,7 +189,6 @@ class AccountStats extends BaseWidget
             ->get();
 
 
-        // Log::debug('closingBalance', [$accountsWithClosingBalance]);
 
         // Sum the latest balance from each filtered account.
         $closingBalance = $accountsWithClosingBalance->sum(fn($acc) => $acc->balances->first()?->idr_amount ?? 0);
